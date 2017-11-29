@@ -1,0 +1,124 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "webAppServicePlanName": {
+      "defaultValue": "WebAppServicePlan",
+      "type": "string",
+      "minLength": 1
+    },
+    "webAppServicePlanSKUName": {
+      "type": "string",
+      "defaultValue": "F1",
+      "minLength": 2,
+      "allowedValues": [
+        "F1",
+        "D1",
+        "B1",
+        "B2",
+        "B3",
+        "S1",
+        "S2",
+        "S3",
+        "P1",
+        "P2",
+        "P3",
+        "P1V2",
+        "P2V2",
+        "P3V2"
+      ],
+      "metadata": {
+        "description": "Describes app service plan's pricing tier and capacity. Check details at https://azure.microsoft.com/en-us/pricing/details/app-service/"
+      }
+    },
+    "webAppServicePlanInstanceNumber": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "metadata": {
+        "description": "It's the number of VM instances that run your app. You can scale out to as many as 20 instances, depending on your pricing tier. Check details at https://docs.microsoft.com/en-us/azure/app-service-web/web-sites-scale"
+      }
+    },
+    "webAppName": {
+      "type": "string",
+      "defaultValue": "WebApp",
+      "minLength": 1
+    },
+    "cognitiveServicesName": {
+      "type": "string",
+      "defaultValue": "CognitiveServices",
+      "minLength": 1,
+      "metadata": {
+        "description": "The name of the cognitive services account."
+      }
+    },
+    "cognitiveServicesSKUName": {
+      "defaultValue": "S0",
+      "minLength": 2,
+      "type": "string",
+      "allowedValues": [
+        "F0",
+        "S0",
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "metadata": {
+        "description": "The SKU of the cognitive services account."
+      }
+    }
+  },
+  "variables": {
+    "location": "westus",
+    "locationUpperCamelCase": "West US"
+  },
+  "resources": [
+    {
+      "name": "[parameters('webAppServicePlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[variables('locationUpperCamelCase')]",
+      "apiVersion": "2015-08-01",
+      "sku": {
+        "name": "[parameters('webAppServicePlanSKUName')]"
+      },
+      "dependsOn": [],
+      "properties": {
+        "name": "[parameters('webAppServicePlanName')]",
+        "numberOfWorkers": "[parameters('webAppServicePlanInstanceNumber')]"
+      }
+    },
+    {
+      "name": "[parameters('webAppName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[variables('locationUpperCamelCase')]",
+      "apiVersion": "2015-08-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', parameters('webAppServicePlanName'))]"
+      ],
+      "tags": {
+        "[concat('hidden-related:', resourceId('Microsoft.Web/serverfarms', parameters('webAppServicePlanName')))]": "Resource"
+      },
+      "properties": {
+        "name": "[parameters('webAppName')]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('webAppServicePlanName'))]"
+      }
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.CognitiveServices/accounts",
+      "sku": {
+        "name": "[parameters('cognitiveServicesSKUName')]"
+      },
+      "kind": "TextAnalytics",
+      "name": "[parameters('cognitiveServicesName')]",
+      "apiVersion": "2016-02-01-preview",
+      "location": "[variables('location')]",
+      "scale": null,
+      "properties": {},
+      "dependsOn": []
+    }
+  ],
+  "outputs": {
+  }
+}

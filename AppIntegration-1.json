@@ -1,0 +1,257 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "cognitiveServicesName": {
+      "defaultValue": "CognitiveServices",
+      "minLength": 1,
+      "type": "string",
+      "metadata": {
+        "description": "The name of the cognitive services account."
+      }
+    },
+    "cognitiveServicesSKUName": {
+      "defaultValue": "S0",
+      "minLength": 2,
+      "type": "string",
+      "allowedValues": [
+        "F0",
+        "S0",
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "metadata": {
+        "description": "The SKU of the cognitive services account."
+      }
+    },
+    "workflowsLogicAppTemplateName": {
+      "defaultValue": "LogicAppTemplate",
+      "minLength": 1,
+      "type": "string",
+      "metadata": {
+        "description": "The name of the logic app."
+      }
+    }
+  },
+  "variables": {
+    "location": "westus",
+    "connectionTwilioName": "twilio",
+    "connectionPowerbiName": "powerbi",
+    "connectionMailchimpName": "mailchimp",
+    "connectionDynamicscrmonlineName": "dynamicscrmonline",
+    "connectionCognitiveservicestextanalyticsName": "cognitiveservicestextanalytics",
+    "twilio": {
+      "Id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', variables('location'), '/managedApis/', 'twilio')]",
+      "ResourceId": "[resourceId('Microsoft.Web/connections', variables('connectionTwilioName'))]"
+    },
+    "powerbi": {
+      "Id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', variables('location'), '/managedApis/', 'powerbi')]",
+      "ResourceId": "[resourceId('Microsoft.Web/connections', variables('connectionPowerbiName'))]"
+    },
+    "mailchimp": {
+      "Id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', variables('location'), '/managedApis/', 'mailchimp')]",
+      "ResourceId": "[resourceId('Microsoft.Web/connections', variables('connectionMailchimpName'))]"
+    },
+    "dynamicscrmonline": {
+      "Id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', variables('location'), '/managedApis/', 'dynamicscrmonline')]",
+      "ResourceId": "[resourceId('Microsoft.Web/connections', variables('connectionDynamicscrmonlineName'))]"
+    },
+    "cognitiveservicestextanalytics": {
+      "Id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', variables('location'), '/managedApis/', 'cognitiveservicestextanalytics')]",
+      "ResourceId": "[resourceId('Microsoft.Web/connections', variables('connectionCognitiveservicestextanalyticsName'))]"
+    }
+  },
+  "resources": [
+    {
+      "comments": "",
+      "type": "Microsoft.CognitiveServices/accounts",
+      "sku": {
+        "name": "[parameters('cognitiveServicesSKUName')]"
+      },
+      "kind": "TextAnalytics",
+      "name": "[parameters('cognitiveServicesName')]",
+      "apiVersion": "2016-02-01-preview",
+      "location": "[variables('location')]",
+      "scale": null,
+      "properties": {},
+      "dependsOn": []
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Logic/workflows",
+      "name": "[parameters('workflowsLogicAppTemplateName')]",
+      "apiVersion": "2016-06-01",
+      "location": "[variables('location')]",
+      "tags": {},
+      "scale": null,
+      "properties": {
+        "state": "Enabled",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            }
+          },
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {}
+              }
+            }
+          },
+          "actions": {
+            "Condition": {
+              "actions": {
+                "HTTP": {
+                  "runAfter": {
+                    "Set_variable": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Http",
+                  "inputs": {
+                    "method": "POST",
+                    "uri": "http://contoso.sharepoint.com"
+                  }
+                },
+                "Set_variable": {
+                  "runAfter": {},
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "Placeholder",
+                    "value": "Remove this Set Variable action then insert the Twilio - Send Text Message (SMS) action here."
+                  }
+                }
+              },
+              "runAfter": {
+                "Initialize_variable": [
+                  "Succeeded"
+                ]
+              },
+              "expression": "@less(body('Detect_Sentiment')?['score'], 0.3)",
+              "type": "If"
+            },
+            "Detect_Sentiment": {
+              "runAfter": {},
+              "type": "ApiConnection",
+              "inputs": {
+                "body": {},
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['cognitiveservicestextanalytics']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/sentiment"
+              }
+            },
+            "Initialize_variable": {
+              "runAfter": {
+                "Detect_Sentiment": [
+                  "Succeeded"
+                ]
+              },
+              "type": "InitializeVariable",
+              "inputs": {
+                "variables": [
+                  {
+                    "name": "Placeholder",
+                    "type": "String",
+                    "value": "Remove this variable initialization and create your CRM connection (Dynamics 365) here."
+                  }
+                ]
+              }
+            }
+          },
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "cognitiveservicestextanalytics": {
+                "connectionId": "[variables('cognitiveservicestextanalytics').ResourceId]",
+                "connectionName": "[variables('connectionCognitiveservicestextanalyticsName')]",
+                "id": "[variables('cognitiveservicestextanalytics').Id]"
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[variables('cognitiveservicestextanalytics').ResourceId]"
+      ]
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Web/connections",
+      "name": "[variables('connectionTwilioName')]",
+      "apiVersion": "2016-06-01",
+      "location": "[variables('location')]",
+      "properties": {
+        "api": {
+          "id": "[variables('twilio').Id]"
+        }
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Web/connections",
+      "name": "[variables('connectionPowerbiName')]",
+      "apiVersion": "2016-06-01",
+      "location": "[variables('location')]",
+      "properties": {
+        "api": {
+          "id": "[variables('powerbi').Id]"
+        }
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Web/connections",
+      "name": "[variables('connectionMailchimpName')]",
+      "apiVersion": "2016-06-01",
+      "location": "[variables('location')]",
+      "properties": {
+        "api": {
+          "id": "[variables('mailchimp').Id]"
+        }
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Web/connections",
+      "name": "[variables('connectionDynamicscrmonlineName')]",
+      "apiVersion": "2016-06-01",
+      "location": "[variables('location')]",
+      "properties": {
+        "api": {
+          "id": "[variables('dynamicscrmonline').Id]"
+        }
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Web/connections",
+      "name": "[variables('connectionCognitiveservicestextanalyticsName')]",
+      "apiVersion": "2016-06-01",
+      "location": "[variables('location')]",
+      "properties": {
+        "api": {
+          "id": "[variables('cognitiveservicestextanalytics').Id]"
+        }
+      },
+      "dependsOn": []
+    }
+  ]
+}
