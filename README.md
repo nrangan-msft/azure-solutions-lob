@@ -1,1 +1,1 @@
-# azure-solutions-lob
+# Deployable ARM templates for LOB applications
